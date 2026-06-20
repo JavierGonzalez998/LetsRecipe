@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("MYSQL_URL")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  name      String
+  email     String    @unique
+  password  String
+  role      String    @default("user")
+  createdAt DateTime  @default(now())
+  recipes   Recipe[]
+  comments  Comment[]
+  ratings   Rating[]
+}
+
+model Category {
+  id            String        @id @default(cuid())
+  name          String
+  slug          String        @unique
+  subcategories Subcategory[]
+  recipes       Recipe[]
+}
+
+model Subcategory {
+  id         String   @id @default(cuid())
+  name       String
+  slug       String   @unique
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  recipes    Recipe[]
+}
+
+model Ingredient {
+  id                String             @id @default(cuid())
+  name              String
+  unit              String
+  recipeIngredients RecipeIngredient[]
+}
+
+model Recipe {
+  id            String             @id @default(cuid())
+  title         String
+  description   String             @db.Text
+  instructions  String             @db.Text
+  imageUrl      String?
+  categoryId    String
+  subcategoryId String?
+  authorId      String
+  createdAt     DateTime           @default(now())
+  category      Category           @relation(fields: [categoryId], references: [id])
+  subcategory   Subcategory?       @relation(fields: [subcategoryId], references: [id])
+  author        User               @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  ingredients   RecipeIngredient[]
+  comments      Comment[]
+  ratings       Rating[]
+}
+
+model RecipeIngredient {
+  recipeId     String
+  ingredientId String
+  quantity     Float
+  recipe       Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@id([recipeId, ingredientId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  recipeId  String
+  userId    String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Rating {
+  id       String @id @default(cuid())
+  recipeId String
+  userId   String
+  score    Int
+  recipe   Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([recipeId, userId])
+}
