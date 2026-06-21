@@ -66,7 +66,7 @@ export default function RecipeInteractions({ initialRecipe }: { initialRecipe: R
     await fetch(`/api/recipes/${recipe.id}/comments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: currentUser.id, content: comment }),
+      body: JSON.stringify({ content: comment }),
     })
     setComment('')
     setSubmitting(false)
@@ -80,7 +80,7 @@ export default function RecipeInteractions({ initialRecipe }: { initialRecipe: R
     await fetch(`/api/recipes/${recipe.id}/ratings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: currentUser.id, score }),
+      body: JSON.stringify({ score }),
     })
     showToast(`Puntuación de ${score} estrella${score !== 1 ? 's' : ''} guardada`)
     loadRecipe()

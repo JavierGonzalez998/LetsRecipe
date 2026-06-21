@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
@@ -8,18 +9,18 @@ async function main() {
   // Users
   const admin = await prisma.user.upsert({
     where: { email: 'admin@letsrecipe.com' },
-    update: {},
-    create: { id: 'u1', name: 'Admin Chef', email: 'admin@letsrecipe.com', password: 'admin123', role: 'admin' },
+    update: { password: await bcrypt.hash('admin123', 10) },
+    create: { id: 'u1', name: 'Admin Chef', email: 'admin@letsrecipe.com', password: await bcrypt.hash('admin123', 10), role: 'admin' },
   })
   const maria = await prisma.user.upsert({
     where: { email: 'maria@example.com' },
-    update: {},
-    create: { id: 'u2', name: 'María García', email: 'maria@example.com', password: 'maria123', role: 'user' },
+    update: { password: await bcrypt.hash('maria123', 10) },
+    create: { id: 'u2', name: 'María García', email: 'maria@example.com', password: await bcrypt.hash('maria123', 10), role: 'user' },
   })
   const carlos = await prisma.user.upsert({
     where: { email: 'carlos@example.com' },
-    update: {},
-    create: { id: 'u3', name: 'Carlos López', email: 'carlos@example.com', password: 'carlos123', role: 'user' },
+    update: { password: await bcrypt.hash('carlos123', 10) },
+    create: { id: 'u3', name: 'Carlos López', email: 'carlos@example.com', password: await bcrypt.hash('carlos123', 10), role: 'user' },
   })
 
   // Categories
