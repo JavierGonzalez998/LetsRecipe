@@ -5,6 +5,7 @@ import Navbar from './components/Navbar'
 import { ThemeProvider } from './components/ThemeProvider'
 import { AuthProvider } from './components/AuthProvider'
 import Link from 'next/link'
+import FooterAccount from './components/FooterAccount'
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
@@ -74,13 +75,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                   <li><Link href="/?categoryId=" className="hover:text-primary transition-colors">Por categoría</Link></li>
                 </ul>
               </div>
-              <div>
-                <h4 className="font-semibold mb-3 text-base-content/80">Cuenta</h4>
-                <ul className="space-y-2 text-sm text-base-content/60">
-                  <li><Link href="/login" className="hover:text-primary transition-colors">Iniciar sesión</Link></li>
-                  <li><Link href="/admin" className="hover:text-primary transition-colors">Panel admin</Link></li>
-                </ul>
-              </div>
+              <FooterAccount />
             </div>
             <div className="border-t border-base-200 py-4 text-center text-xs text-base-content/40">
               © 2024 LetsRecipe — Hecho con amor y Next.js + DaisyUI

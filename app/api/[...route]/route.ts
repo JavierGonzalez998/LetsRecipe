@@ -112,11 +112,12 @@ app.get('/recipes', async (c) => {
   const cached = await cacheGet(cacheKey)
   if (cached) return c.json(cached)
 
-  const { categoryId, subcategoryId, search } = c.req.query()
+  const { categoryId, subcategoryId, search, authorId } = c.req.query()
   const recipes = await prisma.recipe.findMany({
     where: {
       ...(categoryId ? { categoryId } : {}),
       ...(subcategoryId ? { subcategoryId } : {}),
+      ...(authorId ? { authorId } : {}),
       ...(search ? { OR: [{ title: { contains: search } }, { description: { contains: search } }] } : {}),
     },
     include: recipeListInclude,
@@ -127,8 +128,11 @@ app.get('/recipes', async (c) => {
   return c.json(result)
 })
 
-app.post('/recipes', requireAdmin, async (c) => {
+app.post('/recipes', requireAuth, async (c) => {
+  const jwt = c.get('jwt')
   const body = await c.req.json()
+  // Admins pueden asignar cualquier autor; usuarios solo pueden publicar como ellos mismos
+  const authorId = jwt.role === 'admin' && body.authorId ? body.authorId : jwt.sub
   const recipe = await prisma.recipe.create({
     data: {
       title: body.title,
@@ -137,7 +141,7 @@ app.post('/recipes', requireAdmin, async (c) => {
       imageUrl: body.imageUrl || null,
       categoryId: body.categoryId,
       subcategoryId: body.subcategoryId || null,
-      authorId: body.authorId,
+      authorId,
       ingredients: {
         createMany: {
           data: (body.ingredients ?? []).map(
@@ -181,9 +185,15 @@ app.get('/recipes/:id', async (c) => {
   return c.json(result)
 })
 
-app.put('/recipes/:id', requireAdmin, async (c) => {
+app.put('/recipes/:id', requireAuth, async (c) => {
   const id = c.req.param('id') as string
+  const jwt = c.get('jwt')
+  const existing = await prisma.recipe.findUnique({ where: { id }, select: { authorId: true } })
+  if (!existing) return c.json({ error: 'Not found' }, 404)
+  if (existing.authorId !== jwt.sub && jwt.role !== 'admin') return c.json({ error: 'Acceso denegado' }, 403)
+
   const body = await c.req.json()
+  const authorId = jwt.role === 'admin' && body.authorId ? body.authorId : existing.authorId
   const recipe = await prisma.$transaction(async (tx) => {
     await tx.recipeIngredient.deleteMany({ where: { recipeId: id } })
     return tx.recipe.update({
@@ -195,7 +205,7 @@ app.put('/recipes/:id', requireAdmin, async (c) => {
         imageUrl: body.imageUrl || null,
         categoryId: body.categoryId,
         subcategoryId: body.subcategoryId || null,
-        authorId: body.authorId,
+        authorId,
         ingredients: {
           createMany: {
             data: (body.ingredients ?? []).map(
@@ -210,8 +220,12 @@ app.put('/recipes/:id', requireAdmin, async (c) => {
   return c.json(recipe)
 })
 
-app.delete('/recipes/:id', requireAdmin, async (c) => {
+app.delete('/recipes/:id', requireAuth, async (c) => {
   const id = c.req.param('id') as string
+  const jwt = c.get('jwt')
+  const existing = await prisma.recipe.findUnique({ where: { id }, select: { authorId: true } })
+  if (!existing) return c.json({ error: 'Not found' }, 404)
+  if (existing.authorId !== jwt.sub && jwt.role !== 'admin') return c.json({ error: 'Acceso denegado' }, 403)
   await prisma.recipe.delete({ where: { id } })
   await cacheInvalidate('recipes:list:*', keys.recipeDetail(id))
   return c.json({ ok: true })
@@ -306,10 +320,15 @@ app.post('/users', requireAdmin, async (c) => {
   return c.json(safe, 201)
 })
 
-app.put('/users/:id', requireAdmin, async (c) => {
+app.put('/users/:id', requireAuth, async (c) => {
   const id = c.req.param('id') as string
+  const jwt = c.get('jwt')
+  if (jwt.sub !== id && jwt.role !== 'admin') return c.json({ error: 'Acceso denegado' }, 403)
+
   const { name, email, password, role } = await c.req.json()
-  const data: Record<string, unknown> = { name, email, role }
+  // Only admins can change roles
+  const data: Record<string, unknown> = { name, email }
+  if (jwt.role === 'admin' && role) data.role = role
   if (password) data.password = await bcrypt.hash(password, 10)
   const user = await prisma.user.update({ where: { id }, data })
   await cacheInvalidate(keys.userSession(id))
@@ -412,8 +431,13 @@ app.delete('/upload/profile/:userId', requireAuth, async (c) => {
   return c.json({ ok: true })
 })
 
-app.post('/upload/recipe/:recipeId', requireAdmin, async (c) => {
+app.post('/upload/recipe/:recipeId', requireAuth, async (c) => {
   const recipeId = c.req.param('recipeId') as string
+  const jwt = c.get('jwt')
+  const existing = await prisma.recipe.findUnique({ where: { id: recipeId }, select: { authorId: true } })
+  if (!existing) return c.json({ error: 'Not found' }, 404)
+  if (existing.authorId !== jwt.sub && jwt.role !== 'admin') return c.json({ error: 'Acceso denegado' }, 403)
+
   const formData = await c.req.formData()
   const file = formData.get('file') as File | null
   if (!file) return c.json({ error: 'No se recibió ningún archivo' }, 400)
@@ -427,10 +451,13 @@ app.post('/upload/recipe/:recipeId', requireAdmin, async (c) => {
   return c.json({ url })
 })
 
-app.delete('/upload/recipe/:recipeId', requireAdmin, async (c) => {
+app.delete('/upload/recipe/:recipeId', requireAuth, async (c) => {
   const recipeId = c.req.param('recipeId') as string
-  const recipe = await prisma.recipe.findUnique({ where: { id: recipeId }, select: { imageUrl: true } })
-  if (recipe?.imageUrl) {
+  const jwt = c.get('jwt')
+  const recipe = await prisma.recipe.findUnique({ where: { id: recipeId }, select: { authorId: true, imageUrl: true } })
+  if (!recipe) return c.json({ error: 'Not found' }, 404)
+  if (recipe.authorId !== jwt.sub && jwt.role !== 'admin') return c.json({ error: 'Acceso denegado' }, 403)
+  if (recipe.imageUrl) {
     const k = keyFromUrl(recipe.imageUrl)
     if (k) await deleteFile(k)
   }

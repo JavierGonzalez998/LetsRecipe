@@ -53,7 +53,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      <div className="flex-none gap-2 items-center">
+      <div className="flex flex-none gap-2 items-center">
         {/* Theme toggle */}
         <button
           onClick={toggle}
@@ -71,6 +71,7 @@ export default function Navbar() {
           </div>
           <ul tabIndex={0} className="menu menu-sm dropdown-content bg-base-100 rounded-box z-50 mt-3 w-48 p-2 shadow-lg border border-base-200">
             <li><Link href="/">Inicio</Link></li>
+            {user && <li><Link href="/profile">Mi perfil</Link></li>}
             {user?.role === 'admin' && <li><Link href="/admin">Panel admin</Link></li>}
             <li className="border-t border-base-200 mt-1 pt-1">
               {user === undefined ? (
@@ -106,9 +107,12 @@ export default function Navbar() {
               <span className="text-sm">{user.name}</span>
               {user.role === 'admin' && <span className="badge badge-primary badge-xs">admin</span>}
             </div>
-            <ul tabIndex={0} className="menu menu-sm dropdown-content bg-base-100 rounded-box z-50 mt-3 w-48 p-2 shadow-lg border border-base-200">
+            <ul tabIndex={0} className="menu menu-sm dropdown-content bg-base-100 rounded-box z-50 mt-3 w-52 p-2 shadow-lg border border-base-200">
+              <li><Link href="/profile">Mi perfil</Link></li>
               {user.role === 'admin' && <li><Link href="/admin">Panel admin</Link></li>}
-              <li><button onClick={handleLogout} className="text-error">Cerrar sesión</button></li>
+              <li className="border-t border-base-200 mt-1 pt-1">
+                <button onClick={handleLogout} className="text-error">Cerrar sesión</button>
+              </li>
             </ul>
           </div>
         )}
