@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import type { RecipeDetail, User } from '@/lib/types'
+import type { RecipeDetail } from '@/lib/types'
+import { useAuth } from '@/app/components/AuthProvider'
 
 function Stars({ value, interactive, onChange }: { value: number; interactive?: boolean; onChange?: (v: number) => void }) {
   const [hover, setHover] = useState(0)
@@ -32,16 +33,12 @@ const formatDate = (iso: string) =>
 
 export default function RecipeInteractions({ initialRecipe }: { initialRecipe: RecipeDetail }) {
   const router = useRouter()
+  const { user: currentUser } = useAuth()
   const [recipe, setRecipe] = useState<RecipeDetail>(initialRecipe)
-  const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [comment, setComment] = useState('')
   const [userRating, setUserRating] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
-
-  useEffect(() => {
-    fetch('/api/auth/me').then(r => r.json()).then(setCurrentUser)
-  }, [])
 
   useEffect(() => {
     if (!currentUser) return

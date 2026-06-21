@@ -1,8 +1,7 @@
 'use client'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { User } from '@/lib/types'
+import { useAuth } from './AuthProvider'
 import { useTheme } from './ThemeProvider'
 
 function SunIcon() {
@@ -31,19 +30,13 @@ function MenuIcon() {
 }
 
 export default function Navbar() {
-  const [user, setUser] = useState<User | null | undefined>(undefined)
+  const { user, logout } = useAuth()
   const router = useRouter()
   const { theme, toggle } = useTheme()
 
-  useEffect(() => {
-    fetch('/api/auth/me').then(r => r.json()).then(setUser)
-  }, [])
-
-  const logout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' })
-    setUser(null)
+  const handleLogout = async () => {
+    await logout()
     router.push('/')
-    router.refresh()
   }
 
   return (
@@ -52,7 +45,6 @@ export default function Navbar() {
         <Link href="/" className="btn btn-ghost gap-2 text-xl font-bold text-primary font-playfair">
           🍳 LetsRecipe
         </Link>
-        {/* Desktop nav links */}
         <div className="hidden md:flex gap-1 ml-4">
           <Link href="/" className="btn btn-ghost btn-sm">Inicio</Link>
           {user?.role === 'admin' && (
@@ -72,7 +64,7 @@ export default function Navbar() {
           {theme === 'cupcake' ? <MoonIcon /> : <SunIcon />}
         </button>
 
-        {/* Mobile hamburger menu */}
+        {/* Mobile hamburger */}
         <div className="dropdown dropdown-bottom dropdown-end md:hidden">
           <div tabIndex={0} role="button" className="btn btn-ghost btn-sm btn-square" aria-label="Menú">
             <MenuIcon />
@@ -81,8 +73,10 @@ export default function Navbar() {
             <li><Link href="/">Inicio</Link></li>
             {user?.role === 'admin' && <li><Link href="/admin">Panel admin</Link></li>}
             <li className="border-t border-base-200 mt-1 pt-1">
-              {user === undefined ? null : user ? (
-                <button onClick={logout} className="text-error">Cerrar sesión</button>
+              {user === undefined ? (
+                <span className="opacity-40 text-xs px-2">Cargando...</span>
+              ) : user ? (
+                <button onClick={handleLogout} className="text-error">Cerrar sesión</button>
               ) : (
                 <Link href="/login">Iniciar sesión</Link>
               )}
@@ -90,37 +84,40 @@ export default function Navbar() {
           </ul>
         </div>
 
-        {/* Desktop user menu */}
-        {user === undefined ? (
-          <span className="loading loading-spinner loading-xs opacity-30 hidden md:inline-flex" />
-        ) : user ? (
+        {/* Desktop: loading skeleton */}
+        {user === undefined && (
+          <div className="hidden md:flex items-center gap-2">
+            <div className="skeleton w-8 h-8 rounded-full" />
+            <div className="skeleton w-20 h-4 rounded" />
+          </div>
+        )}
+
+        {/* Desktop: user menu */}
+        {user && (
           <div className="dropdown dropdown-end hidden md:block">
             <div tabIndex={0} role="button" className="btn btn-ghost gap-2">
-              <div className="avatar placeholder">
-                <div className="bg-primary text-primary-content rounded-full w-8 overflow-hidden">
-                  {user.avatarUrl ? (
-                    <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-sm font-bold">{user.name[0]}</span>
-                  )}
-                </div>
+              <div className="w-8 h-8 rounded-full overflow-hidden bg-primary/20 flex items-center justify-center flex-none">
+                {user.avatarUrl ? (
+                  <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-sm font-bold text-primary">{user.name[0]}</span>
+                )}
               </div>
               <span className="text-sm">{user.name}</span>
-              {user.role === 'admin' && (
-                <span className="badge badge-primary badge-xs">admin</span>
-              )}
+              {user.role === 'admin' && <span className="badge badge-primary badge-xs">admin</span>}
             </div>
             <ul tabIndex={0} className="menu menu-sm dropdown-content bg-base-100 rounded-box z-50 mt-3 w-48 p-2 shadow-lg border border-base-200">
-              {user.role === 'admin' && (
-                <li><Link href="/admin">Panel admin</Link></li>
-              )}
-              <li>
-                <button onClick={logout} className="text-error">Cerrar sesión</button>
-              </li>
+              {user.role === 'admin' && <li><Link href="/admin">Panel admin</Link></li>}
+              <li><button onClick={handleLogout} className="text-error">Cerrar sesión</button></li>
             </ul>
           </div>
-        ) : (
-          <Link href="/login" className="btn btn-primary btn-sm hidden md:inline-flex">Iniciar sesión</Link>
+        )}
+
+        {/* Desktop: login button */}
+        {user === null && (
+          <Link href="/login" className="btn btn-primary btn-sm hidden md:inline-flex">
+            Iniciar sesión
+          </Link>
         )}
       </div>
     </header>

@@ -3,11 +3,14 @@ import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Suspense } from 'react'
+import { useAuth } from '@/app/components/AuthProvider'
+import type { User } from '@/lib/types'
 
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const from = searchParams.get('from') || '/admin'
+  const { setUser } = useAuth()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -24,8 +27,9 @@ function LoginForm() {
       body: JSON.stringify({ email, password }),
     })
     if (res.ok) {
+      const userData: User = await res.json()
+      setUser(userData)           // actualiza el contexto global inmediatamente
       router.push(from)
-      router.refresh()
     } else {
       const data = await res.json()
       setError(data.error || 'Error al iniciar sesión')

@@ -3,6 +3,7 @@ import { Playfair_Display, Inter } from 'next/font/google'
 import './index.css'
 import Navbar from './components/Navbar'
 import { ThemeProvider } from './components/ThemeProvider'
+import { AuthProvider } from './components/AuthProvider'
 import Link from 'next/link'
 
 const playfair = Playfair_Display({
@@ -55,6 +56,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body className="min-h-screen bg-base-200 font-sans">
         <ThemeProvider>
+          <AuthProvider>
           <Navbar />
           {children}
           <footer className="bg-base-100 border-t border-base-200 mt-16">
@@ -84,6 +86,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               © 2024 LetsRecipe — Hecho con amor y Next.js + DaisyUI
             </div>
           </footer>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

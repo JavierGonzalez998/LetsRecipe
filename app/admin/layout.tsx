@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
+import { AdminGuard } from '../components/AdminGuard'
 
 const navItems = [
   { href: '/admin', label: '📊 Dashboard' },
@@ -26,7 +27,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <span className="font-semibold text-sm">Panel de Admin</span>
         </div>
 
-        <main className="flex-1 p-4 md:p-8 overflow-auto">{children}</main>
+        <main className="flex-1 p-4 md:p-8 overflow-auto">
+          <AdminGuard>{children}</AdminGuard>
+        </main>
       </div>
 
       {/* Sidebar */}
