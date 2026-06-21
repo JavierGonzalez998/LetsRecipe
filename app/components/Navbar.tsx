@@ -22,6 +22,14 @@ function MoonIcon() {
   )
 }
 
+function MenuIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  )
+}
+
 export default function Navbar() {
   const [user, setUser] = useState<User | null | undefined>(undefined)
   const router = useRouter()
@@ -39,11 +47,12 @@ export default function Navbar() {
   }
 
   return (
-    <div className="navbar bg-base-100 shadow-sm sticky top-0 z-50 border-b border-base-200">
+    <header className="navbar bg-base-100 shadow-sm sticky top-0 z-50 border-b border-base-200">
       <div className="flex-1">
         <Link href="/" className="btn btn-ghost gap-2 text-xl font-bold text-primary font-playfair">
           🍳 LetsRecipe
         </Link>
+        {/* Desktop nav links */}
         <div className="hidden md:flex gap-1 ml-4">
           <Link href="/" className="btn btn-ghost btn-sm">Inicio</Link>
           {user?.role === 'admin' && (
@@ -63,17 +72,40 @@ export default function Navbar() {
           {theme === 'cupcake' ? <MoonIcon /> : <SunIcon />}
         </button>
 
+        {/* Mobile hamburger menu */}
+        <div className="dropdown dropdown-bottom dropdown-end md:hidden">
+          <div tabIndex={0} role="button" className="btn btn-ghost btn-sm btn-square" aria-label="Menú">
+            <MenuIcon />
+          </div>
+          <ul tabIndex={0} className="menu menu-sm dropdown-content bg-base-100 rounded-box z-50 mt-3 w-48 p-2 shadow-lg border border-base-200">
+            <li><Link href="/">Inicio</Link></li>
+            {user?.role === 'admin' && <li><Link href="/admin">Panel admin</Link></li>}
+            <li className="border-t border-base-200 mt-1 pt-1">
+              {user === undefined ? null : user ? (
+                <button onClick={logout} className="text-error">Cerrar sesión</button>
+              ) : (
+                <Link href="/login">Iniciar sesión</Link>
+              )}
+            </li>
+          </ul>
+        </div>
+
+        {/* Desktop user menu */}
         {user === undefined ? (
-          <span className="loading loading-spinner loading-xs opacity-30" />
+          <span className="loading loading-spinner loading-xs opacity-30 hidden md:inline-flex" />
         ) : user ? (
-          <div className="dropdown dropdown-end">
+          <div className="dropdown dropdown-end hidden md:block">
             <div tabIndex={0} role="button" className="btn btn-ghost gap-2">
               <div className="avatar placeholder">
-                <div className="bg-primary text-primary-content rounded-full w-8">
-                  <span className="text-sm font-bold">{user.name[0]}</span>
+                <div className="bg-primary text-primary-content rounded-full w-8 overflow-hidden">
+                  {user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-sm font-bold">{user.name[0]}</span>
+                  )}
                 </div>
               </div>
-              <span className="hidden md:inline text-sm">{user.name}</span>
+              <span className="text-sm">{user.name}</span>
               {user.role === 'admin' && (
                 <span className="badge badge-primary badge-xs">admin</span>
               )}
@@ -88,9 +120,9 @@ export default function Navbar() {
             </ul>
           </div>
         ) : (
-          <Link href="/login" className="btn btn-primary btn-sm">Iniciar sesión</Link>
+          <Link href="/login" className="btn btn-primary btn-sm hidden md:inline-flex">Iniciar sesión</Link>
         )}
       </div>
-    </div>
+    </header>
   )
 }

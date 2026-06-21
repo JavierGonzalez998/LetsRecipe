@@ -120,7 +120,7 @@ export default function CategoriesPage() {
           <div className="flex justify-end mb-4">
             <button onClick={openCatCreate} className="btn btn-primary btn-sm">+ Nueva categoría</button>
           </div>
-          <div className="card bg-base-100 shadow-sm overflow-hidden">
+          <div className="card bg-base-100 shadow-sm overflow-x-auto">
             <table className="table table-zebra">
               <thead>
                 <tr><th>Nombre</th><th>Slug</th><th>Subcategorías</th><th></th></tr>
@@ -157,7 +157,7 @@ export default function CategoriesPage() {
               + Nueva subcategoría
             </button>
           </div>
-          <div className="card bg-base-100 shadow-sm overflow-hidden">
+          <div className="card bg-base-100 shadow-sm overflow-x-auto">
             <table className="table table-zebra">
               <thead>
                 <tr><th>Nombre</th><th>Categoría padre</th><th>Slug</th><th></th></tr>

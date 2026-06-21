@@ -73,7 +73,7 @@ export default function IngredientsPage() {
         />
       </div>
 
-      <div className="card bg-base-100 shadow-sm overflow-hidden">
+      <div className="card bg-base-100 shadow-sm overflow-x-auto">
         <table className="table table-zebra">
           <thead>
             <tr>

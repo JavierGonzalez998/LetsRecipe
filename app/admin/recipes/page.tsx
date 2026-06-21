@@ -3,6 +3,15 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import type { Category, Ingredient, RecipeIngredient, RecipeWithDetails, Subcategory, User } from '@/lib/types'
 
+// Uploads a file to S3 for the given recipe ID. Returns the public URL.
+async function uploadRecipeImage(recipeId: string, file: File): Promise<string> {
+  const fd = new FormData()
+  fd.append('file', file)
+  const res = await fetch(`/api/upload/recipe/${recipeId}`, { method: 'POST', body: fd })
+  const data = await res.json()
+  return data.url as string
+}
+
 interface RecipeForm {
   title: string
   description: string
@@ -29,7 +38,10 @@ export default function AdminRecipesPage() {
   const [editing, setEditing] = useState<RecipeWithDetails | null>(null)
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const modalRef = useRef<HTMLDialogElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const load = () => {
     Promise.all([
@@ -48,9 +60,16 @@ export default function AdminRecipesPage() {
 
   const filteredSubs = subcategories.filter(s => s.categoryId === form.categoryId)
 
+  const resetImage = () => {
+    setImageFile(null)
+    setImagePreview(null)
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
   const openCreate = () => {
     setEditing(null)
     setForm({ ...emptyForm, categoryId: categories[0]?.id ?? '', authorId: users[0]?.id ?? '' })
+    resetImage()
     modalRef.current?.showModal()
   }
 
@@ -61,24 +80,41 @@ export default function AdminRecipesPage() {
       imageUrl: r.imageUrl ?? '', categoryId: r.categoryId, subcategoryId: r.subcategoryId ?? '',
       authorId: r.authorId, ingredients: r.ingredients,
     })
+    resetImage()
+    setImagePreview(r.imageUrl ?? null)
     modalRef.current?.showModal()
+  }
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null
+    setImageFile(file)
+    if (file) setImagePreview(URL.createObjectURL(file))
   }
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     const payload = { ...form, subcategoryId: form.subcategoryId || undefined }
+    let recipeId = editing?.id ?? ''
+
     if (editing) {
       await fetch(`/api/recipes/${editing.id}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
       })
       showToast('Receta actualizada')
     } else {
-      await fetch('/api/recipes', {
+      const res = await fetch('/api/recipes', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
       })
+      const created = await res.json()
+      recipeId = created.id
       showToast('Receta creada')
     }
+
+    if (imageFile && recipeId) {
+      await uploadRecipeImage(recipeId, imageFile)
+    }
+
     setLoading(false); modalRef.current?.close(); load()
   }
 
@@ -114,7 +150,7 @@ export default function AdminRecipesPage() {
         <button onClick={openCreate} className="btn btn-primary">+ Nueva receta</button>
       </div>
 
-      <div className="card bg-base-100 shadow-sm overflow-hidden">
+      <div className="card bg-base-100 shadow-sm overflow-x-auto">
         <table className="table table-zebra">
           <thead>
             <tr><th>Título</th><th>Categoría</th><th>Autor</th><th>Rating</th><th>Fecha</th><th></th></tr>
@@ -175,10 +211,26 @@ export default function AdminRecipesPage() {
                   value={form.instructions} onChange={e => setForm(f => ({ ...f, instructions: e.target.value }))} />
               </div>
               <div className="flex flex-col gap-2 md:col-span-2">
-                <label className="text-sm font-medium">URL de imagen</label>
-                <input className="input input-bordered" type="url"
-                  placeholder="https://..."
-                  value={form.imageUrl} onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))} />
+                <label className="text-sm font-medium">Imagen</label>
+                <div className="flex items-start gap-4">
+                  {imagePreview && (
+                    <img
+                      src={imagePreview}
+                      alt="preview"
+                      className="w-24 h-16 object-cover rounded-lg border border-base-300 flex-none"
+                    />
+                  )}
+                  <div className="flex flex-col gap-1 flex-1">
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      className="file-input file-input-bordered file-input-sm w-full"
+                      onChange={handleImageChange}
+                    />
+                    <span className="text-xs text-base-content/40">JPG, PNG, WebP o GIF · máx 10 MB</span>
+                  </div>
+                </div>
               </div>
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-medium">Categoría *</label>

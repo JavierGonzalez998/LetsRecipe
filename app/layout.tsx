@@ -17,14 +17,34 @@ const inter = Inter({
   display: 'swap',
 })
 
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000'
+
 export const metadata: Metadata = {
-  title: 'LetsRecipe — Recetas para todos',
-  description: 'Blog de recetas con categorías, ingredientes, puntuaciones y comentarios.',
+  metadataBase: new URL(baseUrl),
+  title: {
+    default: 'LetsRecipe — Recetas para todos',
+    template: '%s | LetsRecipe',
+  },
+  description: 'Descubre recetas auténticas, comparte tus creaciones y conecta con amantes de la cocina casera.',
+  keywords: ['recetas', 'cocina', 'gastronomía', 'ingredientes', 'blog culinario', 'recetas caseras'],
+  openGraph: {
+    type: 'website',
+    locale: 'es_ES',
+    siteName: 'LetsRecipe',
+    title: 'LetsRecipe — Recetas para todos',
+    description: 'Descubre recetas auténticas, comparte tus creaciones y conecta con amantes de la cocina casera.',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'LetsRecipe — Recetas para todos',
+    description: 'Descubre recetas auténticas y comparte tus creaciones.',
+  },
+  robots: { index: true, follow: true },
 }
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es" data-theme="cupcake" className={`${playfair.variable} ${inter.variable}`}>
+    <html lang="es" data-theme="cupcake" className={`${playfair.variable} ${inter.variable}`} suppressHydrationWarning>
       <head>
         {/* Prevent flash of wrong theme */}
         <script

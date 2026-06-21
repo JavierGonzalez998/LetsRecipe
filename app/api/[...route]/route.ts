@@ -2,13 +2,14 @@ import { Hono } from 'hono'
 import { handle } from 'hono/vercel'
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
 import { prisma } from '@/lib/db'
+import { profileKey, recipeMediaKey, uploadFile, deleteFile, keyFromUrl } from '@/lib/s3'
 
 const app = new Hono().basePath('/api')
 
 const slugify = (s: string) =>
   s.toLowerCase().replace(/\s+/g, '-').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9-]/g, '')
 
-const userSelect = { id: true, name: true, email: true, role: true, createdAt: true } as const
+const userSelect = { id: true, name: true, email: true, role: true, avatarUrl: true, createdAt: true } as const
 
 type WithRatingsCount = { ratings: { score: number }[]; _count: { comments: number } }
 const enrich = (r: WithRatingsCount) => ({
@@ -283,6 +284,73 @@ app.get('/recipes/:id/ratings/:userId', async (c) => {
   const { id: recipeId, userId } = c.req.param()
   const rating = await prisma.rating.findUnique({ where: { recipeId_userId: { recipeId, userId } } })
   return c.json(rating)
+})
+
+// ─── UPLOADS ─────────────────────────────────────────────────────────────────
+
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
+
+function fileExt(filename: string): string {
+  return filename.split('.').pop()?.toLowerCase() ?? 'bin'
+}
+
+function sanitizeFilename(name: string): string {
+  return name.replace(/[^a-zA-Z0-9._-]/g, '_')
+}
+
+app.post('/upload/profile/:userId', async (c) => {
+  const userId = c.req.param('userId')
+  const formData = await c.req.formData()
+  const file = formData.get('file') as File | null
+  if (!file) return c.json({ error: 'No se recibió ningún archivo' }, 400)
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) return c.json({ error: 'Tipo de archivo no permitido' }, 400)
+  if (file.size > MAX_FILE_SIZE) return c.json({ error: 'El archivo supera el límite de 10 MB' }, 400)
+
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const key = profileKey(userId, fileExt(file.name))
+  const url = await uploadFile(key, buffer, file.type)
+
+  await prisma.user.update({ where: { id: userId }, data: { avatarUrl: url } })
+  return c.json({ url })
+})
+
+app.delete('/upload/profile/:userId', async (c) => {
+  const userId = c.req.param('userId')
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { avatarUrl: true } })
+  if (user?.avatarUrl) {
+    const key = keyFromUrl(user.avatarUrl)
+    if (key) await deleteFile(key)
+  }
+  await prisma.user.update({ where: { id: userId }, data: { avatarUrl: null } })
+  return c.json({ ok: true })
+})
+
+app.post('/upload/recipe/:recipeId', async (c) => {
+  const recipeId = c.req.param('recipeId')
+  const formData = await c.req.formData()
+  const file = formData.get('file') as File | null
+  if (!file) return c.json({ error: 'No se recibió ningún archivo' }, 400)
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) return c.json({ error: 'Tipo de archivo no permitido' }, 400)
+  if (file.size > MAX_FILE_SIZE) return c.json({ error: 'El archivo supera el límite de 10 MB' }, 400)
+
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const key = recipeMediaKey(recipeId, sanitizeFilename(file.name))
+  const url = await uploadFile(key, buffer, file.type)
+
+  await prisma.recipe.update({ where: { id: recipeId }, data: { imageUrl: url } })
+  return c.json({ url })
+})
+
+app.delete('/upload/recipe/:recipeId', async (c) => {
+  const recipeId = c.req.param('recipeId')
+  const recipe = await prisma.recipe.findUnique({ where: { id: recipeId }, select: { imageUrl: true } })
+  if (recipe?.imageUrl) {
+    const key = keyFromUrl(recipe.imageUrl)
+    if (key) await deleteFile(key)
+  }
+  await prisma.recipe.update({ where: { id: recipeId }, data: { imageUrl: null } })
+  return c.json({ ok: true })
 })
 
 export const GET = handle(app)
